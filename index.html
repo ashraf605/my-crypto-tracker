@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متابعة العملات الرقمية</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2c2c2c;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .search-bar input[type="text"] {
+            width: 50%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            margin-right: 10px;
+            background-color: #444;
+            color: #fff;
+        }
+        .search-bar button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+        .search-bar button:hover {
+            background-color: #0056b3;
+        }
+        .search-bar .suggestions {
+            position: absolute;
+            top: 40px;
+            width: 50%;
+            background-color: #444;
+            border: 1px solid #555;
+            border-radius: 4px;
+            z-index: 10;
+            display: none;
+        }
+        .search-bar .suggestions li {
+            padding: 10px;
+            cursor: pointer;
+            color: #fff;
+        }
+        .search-bar .suggestions li:hover {
+            background-color: #555;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #444;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #444;
+        }
+        tr:nth-child(even) {
+            background-color: #3c3c3c;
+        }
+        .add-coin {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .add-coin input {
+            width: 30%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            background-color: #444;
+            color: #fff;
+        }
+        .add-coin button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+        }
+        .add-coin button:hover {
+            background-color: #218838;
+        }
+        .profit-calculator {
+            background-color: #444;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .profit-calculator input {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #555;
+            color: #fff;
+        }
+        .profit-calculator button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+        }
+        .profit-calculator button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>متابعة العملات الرقمية</h1>
+        </header>
+
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="ابحث عن العملة برمزها...">
+            <button onclick="searchCoin()">ابحث</button>
+            <ul class="suggestions" id="suggestions"></ul>
+        </div>
+
+        <div class="add-coin">
+            <input type="text" id="coin-symbol" placeholder="رمز العملة">
+            <input type="number" id="coin-goal" placeholder="هدف السعر">
+            <button onclick="addCoin()">إضافة عملة</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم العملة</th>
+                    <th>سعر العملة الحالي</th>
+                    <th>هدف السعر</th>
+                    <th>نسبة الربح عند الهدف</th>
+                </tr>
+            </thead>
+            <tbody id="coin-table-body">
+                <!-- العملات المضافة ستظهر هنا -->
+            </tbody>
+        </table>
+
+        <div class="profit-calculator">
+            <h2>حاسبة نسبة الربح</h2>
+            <input type="number" id="buy-price" placeholder="أدخل سعر الشراء">
+            <input type="number" id="sell-price" placeholder="أدخل سعر البيع">
+            <input type="number" id="investment-amount" placeholder="أدخل المبلغ المستثمر">
+            <button onclick="calculateProfit()">احسب الربح</button>
+            <p id="profit-result"></p>
+        </div>
+    </div>
+
+    <script>
+        const BINANCE_API_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=';
+
+        async function getBinanceCoinPrice(symbol) {
+            try {
+                const response = await fetch(`${BINANCE_API_URL}${symbol.toUpperCase()}USDT`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return parseFloat(data.price);
+                } else {
+                    throw new Error('Failed to fetch coin price.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('حدث خطأ في جلب سعر العملة.');
+                return null;
+            }
+        }
+
+        async function searchCoin() {
+            const searchInput = document.getElementById('search-input').value.trim().toUpperCase();
+            const price = await getBinanceCoinPrice(searchInput);
+            if (price !== null) {
+                document.getElementById('search-input').value = `${price} USD`;
+            } else {
+                alert('لم يتم العثور على عملة بهذا الرمز');
+            }
+        }
+
+        async function addCoin() {
+            const coinSymbol = document.getElementById('coin-symbol').value.trim().toUpperCase();
+            const coinGoal = parseFloat(document.getElementById('coin-goal').value);
+            const price = await getBinanceCoinPrice(coinSymbol);
+
+            if (price !== null) {
+                const profitPercentage = ((coinGoal - price) / price) * 100;
+
+                const tableBody = document.getElementById('coin-table-body');
+                const newRow = `
+                    <tr>
+                        <td>${coinSymbol}</td>
+                        <td>${price.toFixed(2)} USD</td>
+                        <td>${coinGoal.toFixed(2)} USD</td>
+                        <td>${profitPercentage.toFixed(2)}%</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += newRow;
+            } else {
+                alert('لم يتم العثور على عملة بهذا الرمز');
+            }
+        }
+
+        function calculateProfit() {
+            const buyPrice = parseFloat(document.getElementById('buy-price').value);
+            const sellPrice = parseFloat(document.getElementById('sell-price').value);
+            const investmentAmount = parseFloat(document.getElementById('investment-amount').value);
+
+            if (!buyPrice || !sellPrice || !investmentAmount) {
+                document.getElementById('profit-result').textContent = "يرجى إدخال جميع البيانات المطلوبة.";
+                return;
+            }
+
+            const profitPercentage = ((sellPrice - buyPrice) / buyPrice) * 100;
+            const profitAmount = ((sellPrice - buyPrice) / buyPrice) * investmentAmount;
+
+            document.getElementById('profit-result').textContent = `نسبة الربح: ${profitPercentage.toFixed(2)}% | الربح: $${profitAmount.toFixed(2)}`;
+        }
+    </script>
+
+</body>
+</html>
